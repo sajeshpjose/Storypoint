@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Story Points Room (Standalone)</title>
+  <title>Story Points Room (Supabase)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center; }
@@ -50,28 +51,53 @@
 </div>
 
 <script>
-let rooms = {};
+const supabase = supabase.createClient('https://YOUR_PROJECT_ID.supabase.co', 'YOUR_ANON_PUBLIC_API_KEY');
+
 let roomIdGlobal = '';
 let userIdGlobal = '';
 let userNameGlobal = '';
 
-function createRoom() {
+async function createRoom() {
   const creatorName = document.getElementById('creatorName').value.trim();
   if (!creatorName) return alert('Enter your name');
-  const roomId = Math.random().toString(36).substring(2,8);
-  rooms[roomId] = { creator: creatorName, revealed: false, participants: {} };
-  userIdGlobal = Math.random().toString(36).substring(2,8);
-  rooms[roomId].participants[userIdGlobal] = { name: creatorName, point: null, selected: false };
-  enterRoom(roomId, creatorName);
+
+  const { data, error } = await supabase
+    .from('rooms')
+    .insert([{ creator_name: creatorName, revealed: false }])
+    .select()
+    .single();
+
+  if (error) return alert('Error creating room');
+
+  roomIdGlobal = data.id;
+  userIdGlobal = crypto.randomUUID();
+
+  await supabase.from('participants').insert([
+    { id: userIdGlobal, room_id: roomIdGlobal, name: creatorName, selected: false }
+  ]);
+
+  enterRoom(roomIdGlobal, creatorName);
 }
 
-function joinRoom() {
+async function joinRoom() {
   const roomId = document.getElementById('roomId').value.trim();
   const userName = document.getElementById('userName').value.trim();
   if (!roomId || !userName) return alert('Enter Room ID and Name');
-  if (!rooms[roomId]) return alert('Room not found. Please create one.');
-  userIdGlobal = Math.random().toString(36).substring(2,8);
-  rooms[roomId].participants[userIdGlobal] = { name: userName, point: null, selected: false };
+
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('id')
+    .eq('id', roomId)
+    .single();
+
+  if (error || !data) return alert('Room not found.');
+
+  userIdGlobal = crypto.randomUUID();
+
+  await supabase.from('participants').insert([
+    { id: userIdGlobal, room_id: roomId, name: userName, selected: false }
+  ]);
+
   enterRoom(roomId, userName);
 }
 
@@ -99,34 +125,46 @@ function loadPoints() {
   });
 }
 
-function submitPoint(point) {
-  rooms[roomIdGlobal].participants[userIdGlobal].point = point;
-  rooms[roomIdGlobal].participants[userIdGlobal].selected = true;
+async function submitPoint(point) {
+  await supabase.from('participants')
+    .update({ point: point, selected: true })
+    .eq('id', userIdGlobal);
   loadParticipants();
 }
 
-function revealPoints() {
-  rooms[roomIdGlobal].revealed = true;
+async function revealPoints() {
+  await supabase.from('rooms')
+    .update({ revealed: true })
+    .eq('id', roomIdGlobal);
   loadParticipants();
 }
 
-function resetRoom() {
-  Object.values(rooms[roomIdGlobal].participants).forEach(p => {
-    p.point = null;
-    p.selected = false;
-  });
-  rooms[roomIdGlobal].revealed = false;
+async function resetRoom() {
+  await supabase.from('participants')
+    .update({ point: null, selected: false })
+    .eq('room_id', roomIdGlobal);
+  await supabase.from('rooms')
+    .update({ revealed: false })
+    .eq('id', roomIdGlobal);
   loadParticipants();
 }
 
-function loadParticipants() {
+async function loadParticipants() {
+  const { data: room } = await supabase.from('rooms').select('revealed').eq('id', roomIdGlobal).single();
+  const revealed = room.revealed;
+
+  const { data: participants } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('room_id', roomIdGlobal);
+
   const list = document.getElementById('participantsList');
   list.innerHTML = '';
-  const revealed = rooms[roomIdGlobal].revealed;
-  Object.values(rooms[roomIdGlobal].participants).forEach(data => {
+
+  participants.forEach(participant => {
     const div = document.createElement('div');
     div.className = 'participant';
-    div.innerText = revealed && data.selected ? `${data.name} - ${data.point}` : `${data.name} - (Hidden)`;
+    div.innerText = revealed && participant.selected ? `${participant.name} - ${participant.point}` : `${participant.name} - (Hidden)`;
     list.appendChild(div);
   });
 }
