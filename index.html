@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <title>Story Points Room (Supabase)</title>
 
-  <!-- Load Supabase Library -->
+  <!-- First load supabase-js library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <script>
-    // Initialize Supabase Client
+    // Initialize Supabase Client AFTER library is loaded
     const supabase = supabase.createClient(
       'https://pmwjivgywaaosudvxjrd.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtd2ppdmd5d2Fhb3N1ZHZ4anJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3MDA0NzksImV4cCI6MjA2MTI3NjQ3OX0.JvO-zw1rLk3_NaE3dkniqIqfjBeqLhmhbjysPWpi820'
