@@ -4,188 +4,44 @@
   <meta charset="UTF-8">
   <title>Story Points Room (Supabase)</title>
 
+  <!-- Load Supabase Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-  <script 
+  <script>
+    // Initialize Supabase Client
+    const supabase = supabase.createClient(
+      'https://pmwjivgywaaosudvxjrd.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtd2ppdmd5d2Fhb3N1ZHZ4anJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3MDA0NzksImV4cCI6MjA2MTI3NjQ3OX0.JvO-zw1rLk3_NaE3dkniqIqfjBeqLhmhbjysPWpi820'
+    );
 
-async function testSupabaseConnection() {
-  const { data, error } = await supabase.from('rooms').select('*').limit(1);
+    // TEST Supabase Connection
+    async function testSupabaseConnection() {
+      const { data, error } = await supabase.from('rooms').select('*').limit(1);
 
-  if (error) {
-    console.error('Supabase connection error:', error.message);
-    alert('❌ Supabase connection failed: ' + error.message);
-  } else {
-    console.log('✅ Supabase connection successful. Sample room data:', data);
-    alert('✅ Supabase connection successful!');
-  }
-}
+      if (error) {
+        console.error('Supabase connection error:', error.message);
+        alert('❌ Supabase connection failed: ' + error.message);
+      } else {
+        console.log('✅ Supabase connection successful. Sample room data:', data);
+        alert('✅ Supabase connection successful!');
+      }
+    }
 
-testSupabaseConnection();
+    testSupabaseConnection(); // Call test immediately
+  </script>
 
-src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
-    .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center; }
-    .form-group { margin-bottom: 20px; }
-    input[type="text"] { padding: 10px; width: 80%; margin-bottom: 10px; }
-    button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; background: #007bff; color: white; cursor: pointer; }
-    .points-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
-    .point-card { background: #eee; padding: 20px; border-radius: 8px; cursor: pointer; }
-    .participants { margin-top: 30px; text-align: left; }
-    .participant { background: #f0f0f0; padding: 10px; margin-bottom: 5px; border-radius: 5px; }
+    /* Your CSS stays same */
   </style>
+
 </head>
 <body>
 
-<div class="container" id="home">
-  <h1>Story Points</h1>
+<!-- Your HTML body here... (no change needed) -->
 
-  <div class="form-group">
-    <input type="text" id="creatorName" placeholder="Enter your name">
-    <button onclick="createRoom()">Create New Room</button>
-  </div>
-
-  <div class="form-group">
-    <input type="text" id="roomId" placeholder="Enter Room ID">
-    <input type="text" id="userName" placeholder="Your Name">
-    <button onclick="joinRoom()">Join Room</button>
-  </div>
-</div>
-
-<div class="container" id="room" style="display:none">
-  <h2>Room ID: <span id="currentRoom"></span></h2>
-  <h3>Welcome, <span id="currentUser"></span></h3>
-
-  <div class="points-grid" id="pointsGrid"></div>
-
-  <div class="form-group">
-    <button onclick="revealPoints()">Reveal Points</button>
-    <button onclick="resetRoom()">Reset</button>
-  </div>
-
-  <div class="participants">
-    <h3>Participants</h3>
-    <div id="participantsList"></div>
-  </div>
-</div>
-
+<!-- Your app JavaScript code here (createRoom, joinRoom, etc.) -->
 <script>
-const supabase = supabase.createClient('https://pmwjivgywaaosudvxjrd.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtd2ppdmd5d2Fhb3N1ZHZ4anJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3MDA0NzksImV4cCI6MjA2MTI3NjQ3OX0.JvO-zw1rLk3_NaE3dkniqIqfjBeqLhmhbjysPWpi820');
-
-let roomIdGlobal = '';
-let userIdGlobal = '';
-let userNameGlobal = '';
-
-async function createRoom() {
-  const creatorName = document.getElementById('creatorName').value.trim();
-  if (!creatorName) return alert('Enter your name');
-
-  const { data, error } = await supabase
-    .from('rooms')
-    .insert([{ creator_name: creatorName, revealed: false }])
-    .select()
-    .single();
-
-  if (error) return alert('Error creating room');
-
-  roomIdGlobal = data.id;
-  userIdGlobal = crypto.randomUUID();
-
-  await supabase.from('participants').insert([
-    { id: userIdGlobal, room_id: roomIdGlobal, name: creatorName, selected: false }
-  ]);
-
-  enterRoom(roomIdGlobal, creatorName);
-}
-
-async function joinRoom() {
-  const roomId = document.getElementById('roomId').value.trim();
-  const userName = document.getElementById('userName').value.trim();
-  if (!roomId || !userName) return alert('Enter Room ID and Name');
-
-  const { data, error } = await supabase
-    .from('rooms')
-    .select('id')
-    .eq('id', roomId)
-    .single();
-
-  if (error || !data) return alert('Room not found.');
-
-  userIdGlobal = crypto.randomUUID();
-
-  await supabase.from('participants').insert([
-    { id: userIdGlobal, room_id: roomId, name: userName, selected: false }
-  ]);
-
-  enterRoom(roomId, userName);
-}
-
-function enterRoom(roomId, userName) {
-  roomIdGlobal = roomId;
-  userNameGlobal = userName;
-  document.getElementById('home').style.display = 'none';
-  document.getElementById('room').style.display = 'block';
-  document.getElementById('currentRoom').innerText = roomId;
-  document.getElementById('currentUser').innerText = userName;
-  loadPoints();
-  loadParticipants();
-}
-
-function loadPoints() {
-  const points = [1,2,3,5,8,13,21];
-  const grid = document.getElementById('pointsGrid');
-  grid.innerHTML = '';
-  points.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'point-card';
-    card.innerText = p;
-    card.onclick = () => submitPoint(p);
-    grid.appendChild(card);
-  });
-}
-
-async function submitPoint(point) {
-  await supabase.from('participants')
-    .update({ point: point, selected: true })
-    .eq('id', userIdGlobal);
-  loadParticipants();
-}
-
-async function revealPoints() {
-  await supabase.from('rooms')
-    .update({ revealed: true })
-    .eq('id', roomIdGlobal);
-  loadParticipants();
-}
-
-async function resetRoom() {
-  await supabase.from('participants')
-    .update({ point: null, selected: false })
-    .eq('room_id', roomIdGlobal);
-  await supabase.from('rooms')
-    .update({ revealed: false })
-    .eq('id', roomIdGlobal);
-  loadParticipants();
-}
-
-async function loadParticipants() {
-  const { data: room } = await supabase.from('rooms').select('revealed').eq('id', roomIdGlobal).single();
-  const revealed = room.revealed;
-
-  const { data: participants } = await supabase
-    .from('participants')
-    .select('*')
-    .eq('room_id', roomIdGlobal);
-
-  const list = document.getElementById('participantsList');
-  list.innerHTML = '';
-
-  participants.forEach(participant => {
-    const div = document.createElement('div');
-    div.className = 'participant';
-    div.innerText = revealed && participant.selected ? `${participant.name} - ${participant.point}` : `${participant.name} - (Hidden)`;
-    list.appendChild(div);
-  });
-}
+  // Your createRoom, joinRoom, enterRoom, loadPoints, submitPoint, etc. functions here.
 </script>
 
 </body>
